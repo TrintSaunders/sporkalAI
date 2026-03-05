@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-visual">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1a3a5c">
@@ -27,6 +27,7 @@
             --border: rgba(255,255,255,0.07);
             --user-bubble: linear-gradient(135deg, #7c3aed, #4f46e5);
             --ai-bubble: #1e1e2c;
+            --keyboard-offset: 0px;
         }
 
         * {
@@ -52,7 +53,6 @@
             height: 100%;
         }
 
-        /* Noise grain texture overlay */
         body::before {
             content: '';
             position: fixed;
@@ -163,7 +163,7 @@
             border-radius: 24px;
             padding: 12px 18px;
             font-family: 'DM Sans', sans-serif;
-            font-size: 16px; /* 16px prevents iOS auto-zoom */
+            font-size: 16px;
             color: var(--text);
             outline: none;
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -188,6 +188,12 @@
             left: 0;
             right: 0;
             z-index: 100;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            transform: translateY(var(--keyboard-offset)) translateZ(0);
+            will-change: transform;
+            transition: transform 0.12s ease-out;
         }
 
         .user-bubble {
@@ -263,6 +269,7 @@
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
             padding: 16px 14px;
+            padding-bottom: calc(80px + env(safe-area-inset-bottom) + var(--keyboard-offset));
             display: flex;
             flex-direction: column;
             gap: 10px;
@@ -618,26 +625,51 @@
             const messagesAreaRef = useRef(null);
             const inputRef = useRef(null);
 
-            // Handle iOS viewport resize when keyboard opens/closes
+            // Improved keyboard handling for iOS/Android
             useEffect(() => {
-                const viewport = window.visualViewport;
-                if (!viewport) return;
+                const handleVisualViewport = () => {
+                    if (!window.visualViewport) return;
 
-                const handler = () => {
-                    const offsetFromBottom = window.innerHeight - viewport.height - viewport.offsetTop;
-                    document.querySelector('.input-bar').style.transform = `translateY(-${offsetFromBottom}px)`;
-                    document.querySelector('.messages-area').style.paddingBottom = `${viewport.height < window.innerHeight ? 80 : 80}px`;
+                    const vp = window.visualViewport;
+                    const keyboardHeight = window.innerHeight - vp.height;
+
+                    document.documentElement.style.setProperty(
+                        '--keyboard-offset',
+                        `${keyboardHeight}px`
+                    );
+
+                    if (messagesAreaRef.current) {
+                        messagesAreaRef.current.style.paddingBottom = `${
+                            80 + keyboardHeight + 20
+                        }px`; // +20 for breathing room
+                    }
+
+                    // Ensure scroll to bottom after resize
+                    setTimeout(() => {
+                        if (messagesAreaRef.current) {
+                            messagesAreaRef.current.scrollTop = messagesAreaRef.current.scrollHeight;
+                        }
+                    }, 80);
                 };
 
-                viewport.addEventListener('resize', handler);
-                viewport.addEventListener('scroll', handler);
+                const vp = window.visualViewport;
+                if (vp) {
+                    vp.addEventListener('resize', handleVisualViewport);
+                    vp.addEventListener('scroll', handleVisualViewport);
+                    // Run once on mount
+                    handleVisualViewport();
+                }
+
+                // Cleanup
                 return () => {
-                    viewport.removeEventListener('resize', handler);
-                    viewport.removeEventListener('scroll', handler);
+                    if (vp) {
+                        vp.removeEventListener('resize', handleVisualViewport);
+                        vp.removeEventListener('scroll', handleVisualViewport);
+                    }
                 };
             }, []);
 
-            // Scroll to bottom when messages change
+            // Scroll to bottom when messages or loading changes
             useEffect(() => {
                 if (messagesAreaRef.current) {
                     messagesAreaRef.current.scrollTop = messagesAreaRef.current.scrollHeight;
@@ -816,7 +848,7 @@ Student context: stress=${userContext.stressLevel}, preference=${userContext.mea
                     </div>
 
                     {/* Input */}
-                    <div className="input-bar" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <div className="input-bar">
                         <input
                             ref={inputRef}
                             type="text"
