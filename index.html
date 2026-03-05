@@ -859,10 +859,10 @@ Student context: stress=${userContext.stressLevel}, preference=${userContext.mea
             };
 
             return (
-                <div style={{ width: '100%', height: 'var(--vh, 100dvh)', display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>      
+                <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
 
                     {/* Header */}
-                    <div className="header-bar" style={{ padding: '12px 16px', flexShrink: 0 }}>
+                    <div className="header-bar" style={{ padding: '12px 16px', flexShrink: 0, position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <div className="logo-pill">
                                 <div className="logo-icon">
@@ -883,7 +883,7 @@ Student context: stress=${userContext.stressLevel}, preference=${userContext.mea
                     </div>
 
                     {/* Messages */}
-                    <div className="messages-area">
+                    <div className="messages-area" style={{ paddingTop: '80px', paddingBottom: '80px' }}>
                         {messages.map((msg, idx) => (
                             <div
                                 key={idx}
@@ -915,7 +915,7 @@ Student context: stress=${userContext.stressLevel}, preference=${userContext.mea
                     </div>
 
                     {/* Input */}
-                    <div className="input-bar" style={{ display: 'flex', gap: '10px', alignItems: 'center', flexShrink: 0 }}>
+                    <div className="input-bar" style={{ display: 'flex', gap: '10px', alignItems: 'center', position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
                         <input
                             ref={inputRef}
                             type="text"
@@ -936,7 +936,7 @@ Student context: stress=${userContext.stressLevel}, preference=${userContext.mea
                     </div>
                 </div>
             );
-        };
+        }
 
         ReactDOM.render(<SporkalChat />, document.getElementById('root'));
     </script>
