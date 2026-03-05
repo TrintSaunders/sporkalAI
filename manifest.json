@@ -1,0 +1,16 @@
+{
+    "name": "Sporkal AI Chatbot",
+    "short_name": "Sporkal",
+    "description": "Your student food assistant",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#f5f0e8",
+    "theme_color": "#1a3a5c",
+    "icons": [
+      {
+        "src": "/icon.png",
+        "sizes": "512x512",
+        "type": "image/png"
+      }
+    ]
+  }
