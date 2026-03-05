@@ -172,6 +172,9 @@ app.get('/health', (req, res) => {
     });
 });
 
+//Server Static Files
+app.use(express.static(__dirname));
+
 // 404 handler
 app.use((req, res) => {
     res.status(404).json({ error: 'Endpoint not found' });
@@ -187,5 +190,4 @@ app.listen(PORT, () => {
     }
 });
 
-app.use(express.static(__dirname));
 module.exports = app; // For testing
