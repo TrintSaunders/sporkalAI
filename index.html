@@ -41,7 +41,7 @@
             overscroll-behavior: none;
             position: fixed;
             width: 100%;
-            height: 100%;
+            height: 100dvh;
             font-family: 'DM Sans', sans-serif;
             background: var(--bg);
             color: var(--text);
@@ -49,7 +49,9 @@
 
         #root {
             width: 100%;
-            height: 100%;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
         }
 
         /* Noise grain texture overlay */
@@ -270,6 +272,7 @@
             flex-direction: column;
             gap: 10px;
             scroll-behavior: smooth;
+            overscroll-behavior: contain;
         }
 
         .messages-area::-webkit-scrollbar {
@@ -697,8 +700,10 @@
             const inputRef = useRef(null);
 
             useEffect(() => {
-                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-            }, [messages, loading]);
+                if (!loading) {
+                    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                }
+            }, [messages]);
 
             useEffect(() => {
                 setMessages([{
@@ -811,7 +816,7 @@ Student context: stress=${userContext.stressLevel}, preference=${userContext.mea
 
                     const data = await response.json();
                     const reply = data.reply || "Sorry, I couldn't get a response. Try again!";
-                    
+
                     setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
                     saveConversationEntry(userMessage, reply, userContext);
 
