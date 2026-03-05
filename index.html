@@ -13,7 +13,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
-    
+
     <style>
         :root {
             --bg: #0f0f13;
@@ -27,7 +27,6 @@
             --border: rgba(255,255,255,0.07);
             --user-bubble: linear-gradient(135deg, #7c3aed, #4f46e5);
             --ai-bubble: #1e1e2c;
-            --glow: rgba(192, 132, 252, 0.15);
         }
 
         * {
@@ -37,30 +36,33 @@
             padding: 0;
         }
 
-        body {
-            overscroll-behavior: none;
-            width: 100%;
-            height: var(--vh, 100dvh);
-            font-family: 'DM Sans', sans-serif;
-            background: var(--bg);
-            color: var(--text);
+        html, body {
+            height: 100%;
             overflow: hidden;
+            background: var(--bg);
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            color: var(--text);
         }
 
         #root {
             width: 100%;
-            height: var(--vh, 100dvh);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        html {
             height: 100%;
-            overflow: hidden;
         }
 
-        /* Ambient glow blobs */
+        /* Noise grain texture overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.4;
+        }
+
         .ambient-1 {
             position: fixed;
             top: -120px;
@@ -124,10 +126,12 @@
         }
 
         .header-bar {
-            background: rgba(15,15,19,0.85);
+            background: rgba(15,15,19,0.92);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--border);
+            padding: 12px 16px;
+            flex-shrink: 0;
         }
 
         .send-btn {
@@ -149,14 +153,8 @@
             box-shadow: 0 0 18px rgba(124,58,237,0.5);
         }
 
-        .send-btn:active:not(:disabled) {
-            transform: scale(0.94);
-        }
-
-        .send-btn:disabled {
-            opacity: 0.35;
-            cursor: not-allowed;
-        }
+        .send-btn:active:not(:disabled) { transform: scale(0.94); }
+        .send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
         .input-field {
             flex: 1;
@@ -165,15 +163,13 @@
             border-radius: 24px;
             padding: 12px 18px;
             font-family: 'DM Sans', sans-serif;
-            font-size: 15px;
+            font-size: 16px; /* 16px prevents iOS auto-zoom */
             color: var(--text);
             outline: none;
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
 
-        .input-field::placeholder {
-            color: var(--text-muted);
-        }
+        .input-field::placeholder { color: var(--text-muted); }
 
         .input-field:focus {
             border-color: rgba(192,132,252,0.4);
@@ -181,13 +177,13 @@
         }
 
         .input-bar {
-            background: rgba(15,15,19,0.9);
+            background: rgba(15,15,19,0.92);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border-top: 1px solid var(--border);
             padding: 12px 16px;
-            flex-shrink: 0;
             padding-bottom: calc(12px + env(safe-area-inset-bottom));
+            flex-shrink: 0;
         }
 
         .user-bubble {
@@ -234,11 +230,7 @@
             transform: scale(1.05);
         }
 
-        .logo-pill {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+        .logo-pill { display: flex; align-items: center; gap: 10px; }
 
         .logo-icon {
             background: linear-gradient(135deg, #7c3aed, #4f46e5);
@@ -265,22 +257,16 @@
             flex: 1;
             min-height: 0;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
             padding: 16px 14px;
             display: flex;
             flex-direction: column;
             gap: 10px;
-            scroll-behavior: smooth;
             overscroll-behavior: contain;
-            -webkit-overflow-scrolling: touch;
-            will-change: scroll-position;
         }
 
-        .messages-area::-webkit-scrollbar {
-            width: 4px;
-        }
-        .messages-area::-webkit-scrollbar-track {
-            background: transparent;
-        }
+        .messages-area::-webkit-scrollbar { width: 4px; }
+        .messages-area::-webkit-scrollbar-track { background: transparent; }
         .messages-area::-webkit-scrollbar-thumb {
             background: rgba(255,255,255,0.1);
             border-radius: 2px;
@@ -296,6 +282,16 @@
             align-items: center;
             width: fit-content;
         }
+
+        .chat-wrapper {
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
     </style>
 </head>
 <body>
@@ -306,7 +302,6 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // ─── MENU DATA ────────────────────────────────────────────────
         const HPU_MENU = {
             healthy: [
                 "Great Day Bakery – Vegan All Day Options",
@@ -324,7 +319,6 @@
                 "Great Day Bakery – Apple",
                 "Great Day Bakery – Orange",
                 "Great Day Bakery – Red Skinned Potato Salad",
-
                 "Silver Line Diner – BYO Breakfast Burrito",
                 "Silver Line Diner – BYO Breakfast Sandwich",
                 "Silver Line Diner – BYO Breakfast Platter",
@@ -335,7 +329,6 @@
                 "Silver Line Diner – BYO Burrito Bowl",
                 "Silver Line Diner – BYO Taco Salad",
                 "Silver Line Diner – Side Salad",
-
                 "Village Grille – Vegan Pizza",
                 "Village Grille – BYO Salad",
                 "Village Grille – BYO Sandwich",
@@ -343,7 +336,6 @@
                 "Village Grille – Classic Caesar Salad",
                 "Village Grille – Quinoa Black Bean Burger",
                 "Village Grille – Grilled Shrimp",
-
                 "The Point – Made Without Gluten BYO Pizza",
                 "The Point – Buffalo Chicken Salad",
                 "The Point – Caesar Salad",
@@ -351,7 +343,6 @@
                 "The Point – BYO Wrap",
                 "The Point – Garden Salad",
                 "The Point – Carrots and Celery",
-
                 "Slane Starbucks – Brewed Coffee",
                 "Slane Starbucks – Americano",
                 "Slane Starbucks – Espresso",
@@ -367,7 +358,6 @@
                 "Slane Starbucks – Vanilla Protein Latte",
                 "Slane Starbucks – Protein Cold Brew (all protein variants)",
                 "Slane Starbucks – Ethos Water",
-
                 "Village Juice – Pinky Swear Bowl",
                 "Village Juice – Sunset Bowl",
                 "Village Juice – Coco-nut Butter Bowl",
@@ -376,7 +366,7 @@
                 "Village Juice – Herb and Pumpkinseed Salad",
                 "Village Juice – Village Cobb Salad",
                 "Village Juice – Tropical Chicken Bowl",
-                "Village Juice – Farmer’s Daughter Bowl",
+                "Village Juice – Farmer's Daughter Bowl",
                 "Village Juice – Miso Bowl",
                 "Village Juice – Southwest Bowl",
                 "Village Juice – Mediterranean Bowl",
@@ -388,22 +378,19 @@
                 "Village Juice – Super Blue Smoothie",
                 "Village Juice – Nut Butter and Banana Toast",
                 "Village Juice – Avo Vegan Toast",
-
                 "Jamba Juice – Acai Primo Bowl",
                 "Jamba Juice – Chunky Strawberry Bowl",
                 "Jamba Juice – Vanilla Blue Sky Bowl",
                 "Jamba Juice – Strawberry Protein Smoothie",
                 "Jamba Juice – Vanilla Protein Smoothie",
-                "Jamba Juice – Apple ‘N Greens Smoothie",
-                "Jamba Juice – Greens ‘N Ginger Smoothie",
-
+                "Jamba Juice – Apple 'N Greens Smoothie",
+                "Jamba Juice – Greens 'N Ginger Smoothie",
                 "Butterfly – Avocado Bagel",
                 "Butterfly – Mediterranean Experience",
                 "Butterfly – Made Without Gluten Strata",
                 "Butterfly – Pick 2",
                 "Butterfly – Half Sandwich and Soup",
                 "Butterfly – Nitro Cold Brew",
-
                 "Farmers – Field Greens Salad",
                 "Farmers – Romaine Lettuce Salad",
                 "Farmers – Edamame",
@@ -435,7 +422,6 @@
                 "Great Day Bakery – Flatizza",
                 "Great Day Bakery – Chicken Bacon Ranch Flatizza",
                 "Great Day Bakery – Hawaiian Flatizza",
-
                 "Silver Line Diner – Blueberry Pancake Plate",
                 "Silver Line Diner – Chocolate Chip Pancake Plate",
                 "Silver Line Diner – French Toast Sticks Plate",
@@ -457,7 +443,6 @@
                 "Silver Line Diner – Corn Tortilla Chips",
                 "Silver Line Diner – Kettle Chips",
                 "Silver Line Diner – Chocolate Chip Cookie",
-
                 "Market at Yadkin Grill – Hot Dog Combo",
                 "Market at Yadkin Grill – Grilled Cheese",
                 "Market at Yadkin Grill – The Belk Burger",
@@ -465,7 +450,6 @@
                 "Market at Yadkin Grill – Famous Yadkin Quesadilla",
                 "Market at Yadkin Grill – Domino's Pizza",
                 "Market at Yadkin Grill – Sushi",
-
                 "Village Grille – Rotisserie Chicken Wings",
                 "Village Grille – BLT Panini",
                 "Village Grille – Buffalo Chicken Wrap",
@@ -488,7 +472,6 @@
                 "Village Grille – The Panther Pride",
                 "Village Grille – Brisket Philly",
                 "Village Grille – VG Chili Cheese Tots",
-
                 "The Point – Cheesy Bread",
                 "The Point – BBQ Chicken Pizza",
                 "The Point – Extraordinary Margherita Pizza",
@@ -518,7 +501,6 @@
                 "The Point – Fries",
                 "The Point – Tater Tots",
                 "The Point – Sweet Potato Fries",
-
                 "Slane Starbucks – Frappuccinos (all flavors)",
                 "Slane Starbucks – Refreshers & Lemonades",
                 "Slane Starbucks – Hot Chocolate",
@@ -528,7 +510,6 @@
                 "Slane Starbucks – Pumpkin Spice Latte",
                 "Slane Starbucks – Sugar Cookie Latte",
                 "Slane Starbucks – Vanilla Bean Drinks",
-
                 "Purple Pie – Mozzarella Sticks",
                 "Purple Pie – Jumbo Wings",
                 "Purple Pie – Garlic Knots",
@@ -543,14 +524,12 @@
                 "Purple Pie – BYO Pizza",
                 "Purple Pie – Roasted Chicken Vegetable Calzone",
                 "Purple Pie – BYO Calzone",
-
                 "Barberitos – Panther Burrito",
                 "Barberitos – Burrito Bowl",
                 "Barberitos – Nachos",
                 "Barberitos – 2 Tacos",
                 "Barberitos – Quesadilla",
                 "Barberitos – Salad",
-
                 "Subway – Black Forest Ham Sub",
                 "Subway – Cold Cut Sub",
                 "Subway – Meatball Marinara",
@@ -564,7 +543,6 @@
                 "Subway – Rotisserie Chicken",
                 "Subway – Angus Roast Beef",
                 "Subway – Chicken and Bacon Ranch",
-
                 "Sunshine Cafe – Morning Buzz Latte",
                 "Sunshine Cafe – Mocha Cookie Crumble",
                 "Sunshine Cafe – Red Velvet Latte",
@@ -580,7 +558,6 @@
                 "Sunshine Cafe – Jumbo Cinnamon Roll",
                 "Sunshine Cafe – Fried Chicken Biscuit",
                 "Sunshine Cafe – Spiced Honey Chicken Biscuit",
-
                 "Chick-fil-A – Chicken Biscuit",
                 "Chick-fil-A – Spicy Chicken Biscuit",
                 "Chick-fil-A – Bacon Egg and Cheese Biscuit",
@@ -589,85 +566,24 @@
                 "Chick-fil-A – Hash Browns"
             ],
             locations: [
-                {
-                    name: "Great Day Bakery",
-                    building: "Wanek Center",
-                    hours: "7am–9pm daily"
-                },
-                {
-                    name: "Silver Line Diner",
-                    building: "Silver Line",
-                    hours: "7am–10pm daily"
-                },
-                {
-                    name: "Village Grille",
-                    building: "Village",
-                    hours: "11am–10pm daily"
-                },
-                {
-                    name: "The Point",
-                    building: "Wanek Center",
-                    hours: "11am–11:59pm daily"
-                },
-                {
-                    name: "Market at Yadkin Grill",
-                    building: "Yadkin Residence Hall",
-                    hours: "11am–9pm daily"
-                },
-                {
-                    name: "Slane Starbucks",
-                    building: "Slane Student Center",
-                    hours: "7am–9pm daily"
-                },
-                {
-                    name: "Butterfly",
-                    building: "Conservatory",
-                    hours: "7am–5pm daily"
-                },
-                {
-                    name: "Subway",
-                    building: "Slane Student Center",
-                    hours: "10am–9pm daily"
-                },
-                {
-                    name: "Barberitos",
-                    building: "Panther Commons",
-                    hours: "11am–9pm daily"
-                },
-                {
-                    name: "Purple Pie",
-                    building: "Panther Commons",
-                    hours: "11am–10pm daily"
-                },
-                {
-                    name: "Village Juice",
-                    building: "Slane Student Center",
-                    hours: "7am–8pm daily"
-                },
-                {
-                    name: "Sunshine Cafe",
-                    building: "Parking Deck",
-                    hours: "7am–6pm daily"
-                },
-                {
-                    name: "Farmers Market",
-                    building: "Wanek Center",
-                    hours: "7am–8pm daily"
-                },
-                {
-                    name: "Jamba Juice",
-                    building: "Wanek Center",
-                    hours: "10am–8pm daily"
-                },
-                {
-                    name: "Chick-fil-A",
-                    building: "Panther Commons",
-                    hours: "7am–9pm daily"
-                }
+                { name: "Great Day Bakery", building: "Wanek Center", hours: "7am–9pm daily" },
+                { name: "Silver Line Diner", building: "Silver Line", hours: "7am–10pm daily" },
+                { name: "Village Grille", building: "Village", hours: "11am–10pm daily" },
+                { name: "The Point", building: "Wanek Center", hours: "11am–11:59pm daily" },
+                { name: "Market at Yadkin Grill", building: "Yadkin Residence Hall", hours: "11am–9pm daily" },
+                { name: "Slane Starbucks", building: "Slane Student Center", hours: "7am–9pm daily" },
+                { name: "Butterfly", building: "Conservatory", hours: "7am–5pm daily" },
+                { name: "Subway", building: "Slane Student Center", hours: "10am–9pm daily" },
+                { name: "Barberitos", building: "Panther Commons", hours: "11am–9pm daily" },
+                { name: "Purple Pie", building: "Panther Commons", hours: "11am–10pm daily" },
+                { name: "Village Juice", building: "Slane Student Center", hours: "7am–8pm daily" },
+                { name: "Sunshine Cafe", building: "Parking Deck", hours: "7am–6pm daily" },
+                { name: "Farmers Market", building: "Wanek Center", hours: "7am–8pm daily" },
+                { name: "Jamba Juice", building: "Wanek Center", hours: "10am–8pm daily" },
+                { name: "Chick-fil-A", building: "Panther Commons", hours: "7am–9pm daily" }
             ]
         };
 
-        // ─── SVG ICONS ────────────────────────────────────────────────
         const SendIcon = () => (
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="22" y1="2" x2="11" y2="13"/>
@@ -690,60 +606,39 @@
             </svg>
         );
 
-        // ─── MAIN COMPONENT ──────────────────────────────────────────
         const SporkalChat = () => {
             const [messages, setMessages] = useState([]);
             const [input, setInput] = useState('');
             const [loading, setLoading] = useState(false);
             const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
-            const messagesEndRef = useRef(null);
+            const messagesAreaRef = useRef(null);
             const inputRef = useRef(null);
 
-            const scrollToBottom = () => {
-                const el = messagesRef.current;
-                if (el) el.scrollTop = el.scrollHeight;
-            };
-
+            // Handle iOS viewport resize when keyboard opens/closes
             useEffect(() => {
                 const setVH = () => {
-                    document.documentElement.style.setProperty(
-                        '--vh',
-                        `${window.innerHeight}px`
-                    );
-                };
-
-                setVH();
-                window.addEventListener('resize', setVH);
-
-                return () => window.removeEventListener('resize', setVH);
-            }, []);
-            
-            useEffect(() => {
-                scrollToBottom();
-            }, [messages]);
-
-            useEffect(() => {
-                if (!loading) {
-                    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-                }
-            }, [messages]);
-
-            useEffect(() => {
-                const handleResize = () => {
                     const vh = window.visualViewport?.height || window.innerHeight;
-                    document.documentElement.style.setProperty('--vh', `${vh}px`);
+                    if (document.querySelector('.chat-wrapper')) {
+                        document.querySelector('.chat-wrapper').style.height = vh + 'px';
+                    }
                 };
-                
-                handleResize();
-                window.visualViewport?.addEventListener('resize', handleResize);
-                window.addEventListener('resize', handleResize);
-                
+                setVH();
+                window.visualViewport?.addEventListener('resize', setVH);
+                window.visualViewport?.addEventListener('scroll', setVH);
                 return () => {
-                    window.visualViewport?.removeEventListener('resize', handleResize);
-                    window.removeEventListener('resize', handleResize);
+                    window.visualViewport?.removeEventListener('resize', setVH);
+                    window.visualViewport?.removeEventListener('scroll', setVH);
                 };
             }, []);
 
+            // Scroll to bottom when messages change
+            useEffect(() => {
+                if (messagesAreaRef.current) {
+                    messagesAreaRef.current.scrollTop = messagesAreaRef.current.scrollHeight;
+                }
+            }, [messages, loading]);
+
+            // Initial greeting
             useEffect(() => {
                 setMessages([{
                     role: 'assistant',
@@ -751,7 +646,6 @@
                 }]);
             }, []);
 
-            // Save conversation to localStorage for reflections page
             const saveConversationEntry = (userMessage, aiResponse, userContext) => {
                 try {
                     const entry = {
@@ -791,7 +685,7 @@ INTERACTION RULES:
 3. If they reject it, ask what didn't land, then pivot to something completely different.
 4. Keep responses to 2–4 sentences max. Be direct.
 
-"Do NOT default to the first items on any list. Consider the full range of options and pick what genuinely fits the student's situation best."
+Do NOT default to the first items on any list. Consider the full range of options and pick what genuinely fits the student's situation best.
 
 RECOMMENDATION FORMAT:
 "You'd love the [ITEM] at [LOCATION] in [BUILDING]. [One sentence why it fits their vibe.] They're open until [TIME]."
@@ -828,19 +722,12 @@ Student context: stress=${userContext.stressLevel}, preference=${userContext.mea
                 setLoading(true);
 
                 const userContext = analyzeUserContext(userMessage);
-
-                // Build conversation history for API (exclude initial assistant greeting from history)
-                const history = messages.slice(1).map(m => ({
-                    role: m.role,
-                    content: m.content
-                }));
+                const history = messages.slice(1).map(m => ({ role: m.role, content: m.content }));
 
                 try {
                     const response = await fetch("/chat", {
                         method: "POST",
-                        headers: {
-                            "Content-Type": "application/json"
-                        },
+                        headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             systemPrompt: buildSystemPrompt(userContext),
                             messages: history,
@@ -855,19 +742,14 @@ Student context: stress=${userContext.stressLevel}, preference=${userContext.mea
 
                     const data = await response.json();
                     const reply = data.reply || "Sorry, I couldn't get a response. Try again!";
-
                     setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
                     saveConversationEntry(userMessage, reply, userContext);
 
                 } catch (error) {
                     console.error('API Error:', error);
-                    // Check if it's a missing API key error
-                    const isKeyError = error.message?.includes('401') || error.message?.includes('api_key') || !window.ANTHROPIC_API_KEY;
                     setMessages(prev => [...prev, {
                         role: 'assistant',
-                        content: isKeyError
-                            ? "⚠️ API key not configured. Set window.ANTHROPIC_API_KEY before using the chat. In the meantime — The Point in Wanek Center is open until midnight if you need a late-night bite!"
-                            : "I'm having a moment 😅 Head to The Café in Slane or The Point in Wanek for something great. What sounds good?"
+                        content: "I'm having a moment 😅 Head to The Café in Slane or The Point in Wanek for something great. What sounds good?"
                     }]);
                 } finally {
                     setLoading(false);
@@ -882,15 +764,12 @@ Student context: stress=${userContext.stressLevel}, preference=${userContext.mea
             };
 
             return (
-                <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-
+                <div className="chat-wrapper">
                     {/* Header */}
-                    <div className="header-bar" style={{ padding: '12px 16px', flexShrink: 0, position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100 }}>
+                    <div className="header-bar">
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <div className="logo-pill">
-                                <div className="logo-icon">
-                                    <ForkKnifeIcon />
-                                </div>
+                                <div className="logo-icon"><ForkKnifeIcon /></div>
                                 <div>
                                     <div className="header-logo-text" style={{ fontSize: '20px' }}>Sporkal AI</div>
                                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
@@ -906,25 +785,19 @@ Student context: stress=${userContext.stressLevel}, preference=${userContext.mea
                     </div>
 
                     {/* Messages */}
-                    <div className="messages-area" style={{ paddingTop: '80px', paddingBottom: '80px' }}>
+                    <div ref={messagesAreaRef} className="messages-area">
                         {messages.map((msg, idx) => (
-                            <div
-                                key={idx}
-                                className="msg-enter"
-                                style={{
-                                    display: 'flex',
-                                    justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                                    animationDelay: `${idx * 0.03}s`
-                                }}
-                            >
-                                {msg.role === 'user' ? (
-                                    <div className="user-bubble">{msg.content}</div>
-                                ) : (
-                                    <div className="ai-bubble">{msg.content}</div>
-                                )}
+                            <div key={idx} className="msg-enter" style={{
+                                display: 'flex',
+                                justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                                animationDelay: `${idx * 0.03}s`
+                            }}>
+                                {msg.role === 'user'
+                                    ? <div className="user-bubble">{msg.content}</div>
+                                    : <div className="ai-bubble">{msg.content}</div>
+                                }
                             </div>
                         ))}
-
                         {loading && (
                             <div style={{ display: 'flex', justifyContent: 'flex-start' }} className="msg-enter">
                                 <div className="typing-bubble">
@@ -934,11 +807,10 @@ Student context: stress=${userContext.stressLevel}, preference=${userContext.mea
                                 </div>
                             </div>
                         )}
-                        <div ref={messagesEndRef} />
                     </div>
 
                     {/* Input */}
-                    <div className="input-bar" style={{ display: 'flex', gap: '10px', alignItems: 'center', position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
+                    <div className="input-bar" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         <input
                             ref={inputRef}
                             type="text"
@@ -949,17 +821,13 @@ Student context: stress=${userContext.stressLevel}, preference=${userContext.mea
                             className="input-field"
                             disabled={loading}
                         />
-                        <button
-                            className="send-btn"
-                            onClick={handleSend}
-                            disabled={loading || !input.trim()}
-                        >
+                        <button className="send-btn" onClick={handleSend} disabled={loading || !input.trim()}>
                             <SendIcon />
                         </button>
                     </div>
                 </div>
             );
-        }
+        };
 
         ReactDOM.render(<SporkalChat />, document.getElementById('root'));
     </script>
