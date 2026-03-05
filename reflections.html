@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Sporkal AI - Reflections</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <style>
+        :root {
+            --bg: #0f0f13;
+            --surface: #1a1a24;
+            --surface2: #22222f;
+            --accent1: #c084fc;
+            --accent2: #818cf8;
+            --accent3: #f472b6;
+            --text: #f1f0f7;
+            --text-muted: #8884a8;
+            --border: rgba(255,255,255,0.07);
+            --card-bg: #1a1a24;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Grain overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.4;
+        }
+
+        .ambient-1 {
+            position: fixed;
+            top: -100px;
+            left: -80px;
+            width: 360px;
+            height: 360px;
+            background: radial-gradient(circle, rgba(124,58,237,0.16) 0%, transparent 70%);
+            pointer-events: none;
+            border-radius: 50%;
+        }
+
+        .ambient-2 {
+            position: fixed;
+            bottom: -80px;
+            right: -60px;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(244,114,182,0.10) 0%, transparent 70%);
+            pointer-events: none;
+            border-radius: 50%;
+        }
+
+        /* Header */
+        .top-header {
+            background: rgba(15,15,19,0.9);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            padding: 14px 20px 0;
+        }
+
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .logo-pill {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            background: linear-gradient(135deg, #7c3aed, #4f46e5);
+            border-radius: 12px;
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .logo-text {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 20px;
+            background: linear-gradient(90deg, #c084fc, #818cf8, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            color: var(--text);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            font-family: 'DM Sans', sans-serif;
+            transition: background 0.2s, transform 0.15s;
+        }
+
+        .back-btn:hover {
+            background: rgba(255,255,255,0.12);
+            transform: translateX(-2px);
+        }
+
+        /* Tabs */
+        .tab-row {
+            display: flex;
+            gap: 4px;
+        }
+
+        .tab-btn {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 10px 18px;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-muted);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: color 0.2s, border-color 0.2s;
+            white-space: nowrap;
+        }
+
+        .tab-btn.active {
+            color: var(--accent1);
+            border-bottom-color: var(--accent1);
+        }
+
+        .tab-btn:hover:not(.active) {
+            color: var(--text);
+        }
+
+        /* Content */
+        .page-content {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 24px 16px 40px;
+        }
+
+        /* Reflection form card */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--text);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge {
+            background: linear-gradient(135deg, rgba(124,58,237,0.3), rgba(79,70,229,0.3));
+            border: 1px solid rgba(192,132,252,0.2);
+            color: var(--accent1);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 9px;
+            border-radius: 20px;
+            font-family: 'DM Sans', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .question-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent1);
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .question-num {
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .reflection-input {
+            width: 100%;
+            background: var(--surface2);
+            border: 1.5px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            color: var(--text);
+            outline: none;
+            resize: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
+        .reflection-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .reflection-input:focus {
+            border-color: rgba(192,132,252,0.4);
+            box-shadow: 0 0 0 3px rgba(192,132,252,0.07);
+        }
+
+        .save-btn {
+            background: linear-gradient(135deg, #7c3aed, #4f46e5);
+            color: #fff;
+            border: none;
+            border-radius: 24px;
+            padding: 11px 28px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s, opacity 0.2s;
+        }
+
+        .save-btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(124,58,237,0.4);
+        }
+
+        .save-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        /* Section title */
+        .section-title {
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 14px;
+            margin-top: 28px;
+        }
+
+        /* Reflection history card */
+        .history-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 18px 20px;
+            margin-bottom: 12px;
+            transition: border-color 0.2s;
+        }
+
+        .history-card:hover {
+            border-color: rgba(192,132,252,0.2);
+        }
+
+        .history-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+
+        .history-date {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #f87171;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 6px;
+            opacity: 0.6;
+            transition: opacity 0.2s, transform 0.15s;
+            display: flex;
+            align-items: center;
+        }
+
+        .delete-btn:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        .qa-pair {
+            margin-bottom: 12px;
+        }
+
+        .qa-pair:last-child {
+            margin-bottom: 0;
+        }
+
+        .qa-question {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent2);
+            margin-bottom: 4px;
+            line-height: 1.4;
+        }
+
+        .qa-answer {
+            font-size: 14px;
+            color: var(--text);
+            line-height: 1.55;
+            padding-left: 10px;
+            border-left: 2px solid rgba(192,132,252,0.2);
+        }
+
+        /* Conversation cards */
+        .conv-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 18px 20px;
+            margin-bottom: 12px;
+            transition: border-color 0.2s;
+        }
+
+        .conv-card:hover {
+            border-color: rgba(192,132,252,0.2);
+        }
+
+        .conv-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .conv-info {
+            flex: 1;
+        }
+
+        .conv-date {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .conv-count {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+
+        .conv-preview {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-style: italic;
+            line-height: 1.4;
+        }
+
+        .conv-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        /* Expanded conversation view */
+        .conv-expanded {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .conv-expanded::-webkit-scrollbar {
+            width: 3px;
+        }
+        .conv-expanded::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+        }
+
+        .msg-row {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .msg-user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, rgba(124,58,237,0.4), rgba(79,70,229,0.4));
+            border: 1px solid rgba(124,58,237,0.3);
+            border-radius: 14px 14px 3px 14px;
+            padding: 9px 13px;
+            font-size: 13px;
+            max-width: 80%;
+            line-height: 1.45;
+        }
+
+        .msg-ai {
+            align-self: flex-start;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 14px 14px 14px 3px;
+            padding: 9px 13px;
+            font-size: 13px;
+            max-width: 85%;
+            line-height: 1.5;
+            color: var(--text);
+            white-space: pre-wrap;
+        }
+
+        .msg-label {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--text-muted);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .empty-state-icon {
+            font-size: 36px;
+            margin-bottom: 12px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease forwards;
+        }
+    </style>
+</head>
+<body>
+    <div class="ambient-1"></div>
+    <div class="ambient-2"></div>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // ─── REFLECTION QUESTIONS ─────────────────────────────────────
+        const QUESTION_SETS = [
+            [
+                "What meal made you feel most energized today?",
+                "How did stress affect your food choices this week?",
+                "What's one healthy choice you made today that you're proud of?"
+            ],
+            [
+                "Did you try any new foods this week? How did it go?",
+                "How are you balancing comfort food with nutrition during exam season?",
+                "What dining location did you discover or rediscover recently?"
+            ],
+            [
+                "How did sharing a meal with friends impact your day?",
+                "What food are you craving right now — and why do you think that is?",
+                "How has your relationship with food changed this semester?"
+            ],
+            [
+                "What's one small step you could take to eat better this week?",
+                "How does eating well help you manage your academic workload?",
+                "What role does food play in your self-care routine?"
+            ]
+        ];
+
+        // ─── ICONS ────────────────────────────────────────────────────
+        const ForkIcon = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+                <path d="M7 2v20"/>
+                <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+            </svg>
+        );
+
+        const ArrowLeft = () => (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"/>
+                <polyline points="12 19 5 12 12 5"/>
+            </svg>
+        );
+
+        const TrashIcon = () => (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+        );
+
+        const BookIcon = () => (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+            </svg>
+        );
+
+        const HistoryIcon = () => (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 3v5h5"/>
+                <path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/>
+                <path d="M12 7v5l4 2"/>
+            </svg>
+        );
+
+        const ChevronDown = () => (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+            </svg>
+        );
+
+        const ChevronUp = () => (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="18 15 12 9 6 15"/>
+            </svg>
+        );
+
+        // ─── MAIN COMPONENT ──────────────────────────────────────────
+        const SporkalReflections = () => {
+            const [activeTab, setActiveTab] = useState('reflections');
+            const [reflections, setReflections] = useState([]);
+            const [answers, setAnswers] = useState(['', '', '']);
+            const [questions, setQuestions] = useState([]);
+            const [conversations, setConversations] = useState([]);
+            const [expandedConv, setExpandedConv] = useState(null);
+            const [savedBanner, setSavedBanner] = useState(false);
+
+            useEffect(() => {
+                loadQuestions();
+                loadReflections();
+                loadConversations();
+            }, []);
+
+            // ── Load today's questions (rotate daily) ──
+            const loadQuestions = () => {
+                const today = new Date().toDateString();
+                const savedDate = localStorage.getItem('sporkal_q_date');
+                const savedSet = localStorage.getItem('sporkal_q_set');
+
+                if (savedDate === today && savedSet) {
+                    setQuestions(JSON.parse(savedSet));
+                } else {
+                    const set = QUESTION_SETS[Math.floor(Math.random() * QUESTION_SETS.length)];
+                    setQuestions(set);
+                    localStorage.setItem('sporkal_q_set', JSON.stringify(set));
+                    localStorage.setItem('sporkal_q_date', today);
+                }
+            };
+
+            // ── Load saved reflections ──
+            const loadReflections = () => {
+                try {
+                    const saved = JSON.parse(localStorage.getItem('sporkal_reflections') || '[]');
+                    setReflections(saved);
+                } catch (e) {
+                    setReflections([]);
+                }
+            };
+
+            // ── Load past conversations ──
+            const loadConversations = () => {
+                try {
+                    const keys = Object.keys(localStorage).filter(k => k.startsWith('sporkal_conversations_'));
+                    const convs = keys
+                        .map(key => {
+                            try {
+                                const data = JSON.parse(localStorage.getItem(key) || '[]');
+                                if (!Array.isArray(data) || data.length === 0) return null;
+                                return {
+                                    sessionId: key.replace('sporkal_conversations_', ''),
+                                    messages: data,
+                                    timestamp: data[0]?.timestamp || null
+                                };
+                            } catch {
+                                return null;
+                            }
+                        })
+                        .filter(Boolean)
+                        .sort((a, b) => {
+                            if (!a.timestamp) return 1;
+                            if (!b.timestamp) return -1;
+                            return new Date(b.timestamp) - new Date(a.timestamp);
+                        });
+                    setConversations(convs);
+                } catch (e) {
+                    setConversations([]);
+                }
+            };
+
+            const saveReflection = () => {
+                if (!answers.some(a => a.trim())) return;
+
+                const entry = {
+                    id: Date.now(),
+                    questions,
+                    answers,
+                    timestamp: new Date().toISOString()
+                };
+
+                const updated = [entry, ...reflections];
+                setReflections(updated);
+                localStorage.setItem('sporkal_reflections', JSON.stringify(updated));
+                setAnswers(['', '', '']);
+
+                // Rotate to a new question set
+                const set = QUESTION_SETS[Math.floor(Math.random() * QUESTION_SETS.length)];
+                setQuestions(set);
+                localStorage.setItem('sporkal_q_set', JSON.stringify(set));
+                localStorage.setItem('sporkal_q_date', new Date().toDateString());
+
+                setSavedBanner(true);
+                setTimeout(() => setSavedBanner(false), 2500);
+            };
+
+            const deleteReflection = (id) => {
+                const updated = reflections.filter(r => r.id !== id);
+                setReflections(updated);
+                localStorage.setItem('sporkal_reflections', JSON.stringify(updated));
+            };
+
+            const deleteConversation = (sessionId) => {
+                localStorage.removeItem(`sporkal_conversations_${sessionId}`);
+                loadConversations();
+                if (expandedConv === sessionId) setExpandedConv(null);
+            };
+
+            const formatDate = (iso) => {
+                if (!iso) return 'Unknown date';
+                const d = new Date(iso);
+                return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
+                       ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            };
+
+            return (
+                <div>
+                    {/* Sticky Header */}
+                    <div className="top-header">
+                        <div className="header-row">
+                            <div className="logo-pill">
+                                <div className="logo-icon">
+                                    <ForkIcon />
+                                </div>
+                                <div>
+                                    <div className="logo-text">Sporkal AI</div>
+                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '1px' }}>Reflections & History</div>
+                                </div>
+                            </div>
+                            <a href="index.html" className="back-btn">
+                                <ArrowLeft />
+                                Back to Chat
+                            </a>
+                        </div>
+
+                        {/* Tabs */}
+                        <div className="tab-row">
+                            <button
+                                className={`tab-btn ${activeTab === 'reflections' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('reflections')}
+                            >
+                                <BookIcon />
+                                Reflections
+                            </button>
+                            <button
+                                className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('history')}
+                            >
+                                <HistoryIcon />
+                                Chat History
+                                {conversations.length > 0 && (
+                                    <span style={{
+                                        marginLeft: '4px',
+                                        background: 'rgba(192,132,252,0.2)',
+                                        color: 'var(--accent1)',
+                                        fontSize: '11px',
+                                        padding: '1px 7px',
+                                        borderRadius: '10px',
+                                        fontWeight: '600'
+                                    }}>{conversations.length}</span>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Page Content */}
+                    <div className="page-content">
+
+                        {/* ── SAVED BANNER ── */}
+                        {savedBanner && (
+                            <div style={{
+                                position: 'fixed',
+                                top: '80px',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                                color: '#fff',
+                                padding: '10px 22px',
+                                borderRadius: '20px',
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                zIndex: '200',
+                                boxShadow: '0 4px 20px rgba(124,58,237,0.5)',
+                                animation: 'fadeIn 0.2s ease'
+                            }}>
+                                ✓ Reflection saved!
+                            </div>
+                        )}
+
+                        {/* ── REFLECTIONS TAB ── */}
+                        {activeTab === 'reflections' && (
+                            <div className="fade-in">
+                                {/* Today's questions */}
+                                <div className="card">
+                                    <div className="card-title">
+                                        Today's Check-in
+                                        <span className="badge">Daily</span>
+                                    </div>
+
+                                    {questions.map((q, i) => (
+                                        <div key={i}>
+                                            <div className="question-label">
+                                                <span className="question-num">{i + 1}. </span>{q}
+                                            </div>
+                                            <textarea
+                                                className="reflection-input"
+                                                value={answers[i]}
+                                                onChange={(e) => {
+                                                    const next = [...answers];
+                                                    next[i] = e.target.value;
+                                                    setAnswers(next);
+                                                }}
+                                                placeholder="Write your thoughts..."
+                                                rows={3}
+                                            />
+                                        </div>
+                                    ))}
+
+                                    <button
+                                        className="save-btn"
+                                        onClick={saveReflection}
+                                        disabled={!answers.some(a => a.trim())}
+                                    >
+                                        Save Reflections
+                                    </button>
+                                </div>
+
+                                {/* Past Reflections */}
+                                <div className="section-title">Past Reflections</div>
+
+                                {reflections.length === 0 ? (
+                                    <div className="empty-state">
+                                        <div className="empty-state-icon">📝</div>
+                                        <div>No reflections yet.</div>
+                                        <div style={{ marginTop: '6px', fontSize: '13px' }}>Answer today's questions to get started!</div>
+                                    </div>
+                                ) : (
+                                    reflections.map((r) => (
+                                        <div key={r.id} className="history-card fade-in">
+                                            <div className="history-meta">
+                                                <span className="history-date">{formatDate(r.timestamp)}</span>
+                                                <button className="delete-btn" onClick={() => deleteReflection(r.id)} title="Delete">
+                                                    <TrashIcon />
+                                                </button>
+                                            </div>
+                                            {r.questions.map((q, i) => (
+                                                r.answers[i]?.trim() ? (
+                                                    <div key={i} className="qa-pair">
+                                                        <div className="qa-question">{q}</div>
+                                                        <div className="qa-answer">{r.answers[i]}</div>
+                                                    </div>
+                                                ) : null
+                                            ))}
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
+
+                        {/* ── HISTORY TAB ── */}
+                        {activeTab === 'history' && (
+                            <div className="fade-in">
+                                <div className="section-title" style={{ marginTop: 0 }}>Your Conversations</div>
+
+                                {conversations.length === 0 ? (
+                                    <div className="empty-state">
+                                        <div className="empty-state-icon">💬</div>
+                                        <div>No past conversations yet.</div>
+                                        <div style={{ marginTop: '6px', fontSize: '13px' }}>Start chatting with Sporkal AI to see your history here!</div>
+                                    </div>
+                                ) : (
+                                    conversations.map((conv) => (
+                                        <div key={conv.sessionId} className="conv-card fade-in">
+                                            <div className="conv-header">
+                                                <div className="conv-info">
+                                                    <div className="conv-date">{formatDate(conv.timestamp)}</div>
+                                                    <div className="conv-count">
+                                                        {conv.messages.length} exchange{conv.messages.length !== 1 ? 's' : ''}
+                                                    </div>
+                                                    {conv.messages[0]?.userMessage && (
+                                                        <div className="conv-preview">
+                                                            "{conv.messages[0].userMessage.substring(0, 60)}{conv.messages[0].userMessage.length > 60 ? '…' : ''}"
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="conv-actions">
+                                                    <button
+                                                        onClick={() => setExpandedConv(expandedConv === conv.sessionId ? null : conv.sessionId)}
+                                                        style={{
+                                                            background: 'rgba(192,132,252,0.12)',
+                                                            border: '1px solid rgba(192,132,252,0.2)',
+                                                            borderRadius: '10px',
+                                                            color: 'var(--accent1)',
+                                                            padding: '6px 12px',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '5px',
+                                                            fontSize: '12px',
+                                                            fontFamily: 'DM Sans, sans-serif',
+                                                            fontWeight: '500',
+                                                            transition: 'background 0.2s'
+                                                        }}
+                                                    >
+                                                        {expandedConv === conv.sessionId ? <ChevronUp /> : <ChevronDown />}
+                                                        {expandedConv === conv.sessionId ? 'Hide' : 'View'}
+                                                    </button>
+                                                    <button className="delete-btn" onClick={() => deleteConversation(conv.sessionId)} title="Delete">
+                                                        <TrashIcon />
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Expanded conversation messages */}
+                                            {expandedConv === conv.sessionId && (
+                                                <div className="conv-expanded">
+                                                    {conv.messages.map((msg, i) => (
+                                                        <div key={i} className="msg-row">
+                                                            {msg.userMessage && (
+                                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
+                                                                    <span className="msg-label">You</span>
+                                                                    <div className="msg-user">{msg.userMessage}</div>
+                                                                </div>
+                                                            )}
+                                                            {msg.aiResponse && (
+                                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '3px' }}>
+                                                                    <span className="msg-label">Sporkal</span>
+                                                                    <div className="msg-ai">{msg.aiResponse}</div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<SporkalReflections />, document.getElementById('root'));
+    </script>
+</body>
+</html>
