@@ -183,7 +183,11 @@
             border-top: 1px solid var(--border);
             padding: 12px 16px;
             padding-bottom: calc(12px + env(safe-area-inset-bottom));
-            flex-shrink: 0;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
         }
 
         .user-bubble {
@@ -616,18 +620,20 @@
 
             // Handle iOS viewport resize when keyboard opens/closes
             useEffect(() => {
-                const setVH = () => {
-                    const vh = window.visualViewport?.height || window.innerHeight;
-                    if (document.querySelector('.chat-wrapper')) {
-                        document.querySelector('.chat-wrapper').style.height = vh + 'px';
-                    }
+                const viewport = window.visualViewport;
+                if (!viewport) return;
+
+                const handler = () => {
+                    const offsetFromBottom = window.innerHeight - viewport.height - viewport.offsetTop;
+                    document.querySelector('.input-bar').style.transform = `translateY(-${offsetFromBottom}px)`;
+                    document.querySelector('.messages-area').style.paddingBottom = `${viewport.height < window.innerHeight ? 80 : 80}px`;
                 };
-                setVH();
-                window.visualViewport?.addEventListener('resize', setVH);
-                window.visualViewport?.addEventListener('scroll', setVH);
+
+                viewport.addEventListener('resize', handler);
+                viewport.addEventListener('scroll', handler);
                 return () => {
-                    window.visualViewport?.removeEventListener('resize', setVH);
-                    window.visualViewport?.removeEventListener('scroll', setVH);
+                    viewport.removeEventListener('resize', handler);
+                    viewport.removeEventListener('scroll', handler);
                 };
             }, []);
 
