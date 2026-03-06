@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1a3a5c">
@@ -36,8 +36,20 @@
             padding: 0;
         }
 
+        /*
+         * KEY FIX: Use 100dvh (dynamic viewport height).
+         * dvh shrinks automatically when the soft keyboard opens on mobile,
+         * so the entire layout compresses to fit the visible area — exactly
+         * like iMessage. No JavaScript needed for this behavior.
+         *
+         * The meta viewport tag also includes:
+         *   interactive-widget=resizes-content
+         * which tells the browser to resize the layout (not just scroll/overlay)
+         * when the virtual keyboard appears. This is the modern standard approach.
+         */
         html, body {
             height: 100%;
+            /* Prevent any scrolling on the root — the messages area handles its own scroll */
             overflow: hidden;
             background: var(--bg);
         }
@@ -131,6 +143,7 @@
             -webkit-backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--border);
             padding: 12px 16px;
+            /* Never shrink — header stays full size */
             flex-shrink: 0;
         }
 
@@ -176,18 +189,26 @@
             box-shadow: 0 0 0 3px rgba(192,132,252,0.08);
         }
 
+        /*
+         * KEY FIX: Input bar is NO LONGER position:fixed.
+         * It sits at the bottom of the flex column naturally.
+         * When dvh shrinks (keyboard opens), this bar rides up with it,
+         * sitting right on top of the keyboard — just like iMessage.
+         *
+         * safe-area-inset-bottom handles the iPhone home indicator
+         * notch area when the keyboard is NOT open.
+         */
         .input-bar {
-            background: rgba(15,15,19,0.92);
+            background: rgba(15,15,19,0.95);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border-top: 1px solid var(--border);
-            padding: 12px 16px;
-            padding-bottom: calc(12px + env(safe-area-inset-bottom));
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            z-index: 100;
+            padding: 10px 16px;
+            padding-bottom: calc(10px + env(safe-area-inset-bottom));
+            /* Never shrink — input bar stays full size */
+            flex-shrink: 0;
+            /* Smooth ride when keyboard animates open/closed */
+            transition: padding 0.1s ease;
         }
 
         .user-bubble {
@@ -257,16 +278,23 @@
             animation: pulseGlow 2.5s ease infinite;
         }
 
+        /*
+         * KEY FIX: Messages area uses flex:1 with min-height:0.
+         * min-height:0 is critical — without it, a flex child won't
+         * shrink below its content size, breaking the scroll.
+         * overflow-y:auto enables independent scrolling so you can
+         * scroll up to older messages while the keyboard is open.
+         */
         .messages-area {
             flex: 1;
-            min-height: 0;
+            min-height: 0; /* Critical for flex scroll to work */
             overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            padding: 16px 14px;
+            -webkit-overflow-scrolling: touch; /* Momentum scroll on iOS */
+            overscroll-behavior: contain; /* Prevent scroll chaining */
+            padding: 16px 14px 8px;
             display: flex;
             flex-direction: column;
             gap: 10px;
-            overscroll-behavior: contain;
         }
 
         .messages-area::-webkit-scrollbar { width: 4px; }
@@ -287,14 +315,23 @@
             width: fit-content;
         }
 
+        /*
+         * KEY FIX: chat-wrapper uses 100dvh instead of fixed positioning.
+         *
+         * dvh = dynamic viewport height. On mobile browsers this value
+         * automatically updates when the soft keyboard opens or closes,
+         * shrinking to the visible area height. This is what gives us
+         * the iMessage-style "keyboard pushes content up" behavior.
+         *
+         * The flex column means: header + scrollable messages + input bar
+         * all stack and share the available space. When dvh shrinks,
+         * messages-area shrinks (it's flex:1), header and input-bar don't.
+         */
         .chat-wrapper {
             display: flex;
             flex-direction: column;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            width: 100%;
+            height: 100dvh; /* Dynamic viewport height — the magic ingredient */
         }
     </style>
 </head>
@@ -617,32 +654,31 @@
             const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
             const messagesAreaRef = useRef(null);
             const inputRef = useRef(null);
+            const bottomAnchorRef = useRef(null);
 
-            // Handle iOS viewport resize when keyboard opens/closes
-            useEffect(() => {
-                const viewport = window.visualViewport;
-                if (!viewport) return;
-
-                const handler = () => {
-                    const offsetFromBottom = window.innerHeight - viewport.height - viewport.offsetTop;
-                    document.querySelector('.input-bar').style.transform = `translateY(-${offsetFromBottom}px)`;
-                    document.querySelector('.messages-area').style.paddingBottom = `${viewport.height < window.innerHeight ? 80 : 80}px`;
-                };
-
-                viewport.addEventListener('resize', handler);
-                viewport.addEventListener('scroll', handler);
-                return () => {
-                    viewport.removeEventListener('resize', handler);
-                    viewport.removeEventListener('scroll', handler);
-                };
-            }, []);
-
-            // Scroll to bottom when messages change
-            useEffect(() => {
-                if (messagesAreaRef.current) {
-                    messagesAreaRef.current.scrollTop = messagesAreaRef.current.scrollHeight;
+            // Scroll to bottom — uses a bottom anchor element for reliability
+            const scrollToBottom = (behavior = 'smooth') => {
+                if (bottomAnchorRef.current) {
+                    bottomAnchorRef.current.scrollIntoView({ behavior, block: 'end' });
                 }
+            };
+
+            // Scroll to bottom when messages change or typing indicator appears
+            useEffect(() => {
+                scrollToBottom();
             }, [messages, loading]);
+
+            // On input focus (keyboard opens), scroll to bottom after a short
+            // delay to let the dvh resize complete its animation
+            useEffect(() => {
+                const input = inputRef.current;
+                if (!input) return;
+                const onFocus = () => {
+                    setTimeout(() => scrollToBottom('instant'), 120);
+                };
+                input.addEventListener('focus', onFocus);
+                return () => input.removeEventListener('focus', onFocus);
+            }, []);
 
             // Initial greeting
             useEffect(() => {
@@ -790,7 +826,7 @@ Student context: stress=${userContext.stressLevel}, preference=${userContext.mea
                         </div>
                     </div>
 
-                    {/* Messages */}
+                    {/* Messages — scrollable, fills remaining space */}
                     <div ref={messagesAreaRef} className="messages-area">
                         {messages.map((msg, idx) => (
                             <div key={idx} className="msg-enter" style={{
@@ -813,9 +849,11 @@ Student context: stress=${userContext.stressLevel}, preference=${userContext.mea
                                 </div>
                             </div>
                         )}
+                        {/* Invisible anchor at the bottom for reliable scroll-to-bottom */}
+                        <div ref={bottomAnchorRef} style={{ height: 1, flexShrink: 0 }} />
                     </div>
 
-                    {/* Input */}
+                    {/* Input — sits naturally at bottom of flex column, rises with keyboard */}
                     <div className="input-bar" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         <input
                             ref={inputRef}
