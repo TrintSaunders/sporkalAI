@@ -362,23 +362,16 @@
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
             overscroll-behavior: contain;
-            padding: 16px 14px 8px;
-            scroll-padding-top: 16px;
+            padding: 8px 14px 16px;
             display: flex;
-            flex-direction: column;
-            /* No justify-content:flex-end here — it breaks scrollTop detection
-               (scrollTop stays 0 even with content above, triggering false PTR).
-               Instead we use a flex spacer div that grows to push messages down
-               when there are only a few, mimicking the same bottom-anchored look. */
+            /* column-reverse does two things at once:
+               1. Messages naturally anchor to the bottom (newest at bottom, oldest scroll up)
+               2. scrollTop=0 means you are at the NEWEST message (bottom).
+                  Scrolling toward older messages INCREASES scrollTop.
+               This means PTR at scrollTop=0 fires when at newest messages — wrong.
+               So we flip PTR to trigger at the scroll TOP (max scrollTop) instead. */
+            flex-direction: column-reverse;
             gap: 10px;
-        }
-
-        /* Spacer that fills empty space above messages, pushing them to the bottom.
-           flex:1 means it takes all available space when messages are few,
-           shrinks to 0 once messages fill the container. */
-        .messages-spacer {
-            flex: 1;
-            min-height: 16px;
         }
 
         .messages-area::-webkit-scrollbar { width: 4px; }
@@ -785,12 +778,18 @@
                 const el = messagesAreaRef.current;
                 if (!el) return;
                 const THRESHOLD = 72; // px of pull needed to trigger refresh
-                const SCROLL_TOLERANCE = 2; // px — must be THIS close to top to even begin PTR
+                const SCROLL_TOLERANCE = 2; // px rounding buffer
+
+                // With column-reverse, scrollTop=0 is the BOTTOM (newest messages).
+                // The visual TOP (oldest messages) is at maximum scrollTop.
+                // PTR fires when you are at the oldest message and pull down.
+                const atOldestMessage = () => {
+                    const maxScroll = el.scrollHeight - el.clientHeight;
+                    return maxScroll - el.scrollTop <= SCROLL_TOLERANCE;
+                };
 
                 const onTouchStart = (e) => {
-                    // Must be genuinely at the top (not just briefly touching 0 mid-momentum).
-                    // SCROLL_TOLERANCE allows for 1-2px rounding without false triggers.
-                    if (el.scrollTop > SCROLL_TOLERANCE) {
+                    if (!atOldestMessage()) {
                         ptrState.current = { startY: 0, dragging: false, phase: 'idle' };
                         return;
                     }
@@ -799,20 +798,17 @@
 
                 const onTouchMove = (e) => {
                     if (!ptrState.current.dragging) return;
-                    // If user scrolled away from top during the gesture, cancel immediately
-                    if (el.scrollTop > SCROLL_TOLERANCE) {
+                    if (!atOldestMessage()) {
                         ptrState.current.dragging = false;
                         setPtrPhase('idle');
                         return;
                     }
                     const dy = e.touches[0].clientY - ptrState.current.startY;
                     if (dy <= 0) {
-                        // Moving upward — not a pull-down, cancel
                         ptrState.current.dragging = false;
                         setPtrPhase('idle');
                         return;
                     }
-                    // Confirmed intentional downward pull at the top
                     e.preventDefault();
                     const phase = dy >= THRESHOLD ? 'releasing' : 'pulling';
                     ptrState.current.phase = phase;
@@ -844,11 +840,11 @@
                 };
             }, []);
 
-            // Scroll to bottom of messages area
+            // Scroll to bottom — with column-reverse, newest messages are at scrollTop=0
             const scrollToBottom = (behavior = 'smooth') => {
                 const el = messagesAreaRef.current;
                 if (!el) return;
-                el.scrollTop = el.scrollHeight;
+                el.scrollTop = 0;
             };
 
             // Scroll to bottom when messages change or typing indicator appears
@@ -1030,8 +1026,7 @@ Student context: stress=${userContext.stressLevel}, preference=${userContext.mea
                              : 'Pull to refresh'}
                         </div>
                         <div ref={messagesAreaRef} className="messages-area">
-                        <div className="messages-spacer" />
-                        {messages.map((msg, idx) => (
+                        {[...messages].reverse().map((msg, idx) => (
                             <div key={idx} className="msg-enter" style={{
                                 display: 'flex',
                                 justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
