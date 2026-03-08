@@ -365,13 +365,19 @@
             padding: 16px 14px 8px;
             display: flex;
             flex-direction: column;
-            /* Messages stack from the bottom — exactly like iMessage.
-               When there are only 1-2 messages they sit near the bottom,
-               not floating awkwardly at the top. justify-content:flex-end
-               pins content to the bottom; overflow-y:auto still lets you
-               scroll up to older messages once content exceeds the height. */
-            justify-content: flex-end;
+            /* No justify-content:flex-end here — it breaks scrollTop detection
+               (scrollTop stays 0 even with content above, triggering false PTR).
+               Instead we use a flex spacer div that grows to push messages down
+               when there are only a few, mimicking the same bottom-anchored look. */
             gap: 10px;
+        }
+
+        /* Spacer that fills empty space above messages, pushing them to the bottom.
+           flex:1 means it takes all available space when messages are few,
+           shrinks to 0 once messages fill the container. */
+        .messages-spacer {
+            flex: 1;
+            min-height: 0;
         }
 
         .messages-area::-webkit-scrollbar { width: 4px; }
@@ -1023,6 +1029,7 @@ Student context: stress=${userContext.stressLevel}, preference=${userContext.mea
                              : 'Pull to refresh'}
                         </div>
                         <div ref={messagesAreaRef} className="messages-area">
+                        <div className="messages-spacer" />
                         {messages.map((msg, idx) => (
                             <div key={idx} className="msg-enter" style={{
                                 display: 'flex',
