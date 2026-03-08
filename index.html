@@ -363,6 +363,7 @@
             -webkit-overflow-scrolling: touch;
             overscroll-behavior: contain;
             padding: 16px 14px 8px;
+            scroll-padding-top: 16px;
             display: flex;
             flex-direction: column;
             /* No justify-content:flex-end here — it breaks scrollTop detection
@@ -377,7 +378,7 @@
            shrinks to 0 once messages fill the container. */
         .messages-spacer {
             flex: 1;
-            min-height: 0;
+            min-height: 16px;
         }
 
         .messages-area::-webkit-scrollbar { width: 4px; }
