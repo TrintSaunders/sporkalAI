@@ -235,6 +235,14 @@
             color: var(--text);
             outline: none;
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            /* Textarea-specific */
+            resize: none;
+            overflow: hidden;
+            line-height: 1.5;
+            min-height: 46px;
+            max-height: 140px;
+            overflow-y: auto;
+            display: block;
         }
 
         .input-field::placeholder { color: var(--text-muted); }
@@ -921,7 +929,7 @@ Student context: stress=${userContext.stressLevel}, preference=${userContext.mea
                 if (!input.trim() || loading) return;
 
                 const userMessage = input.trim();
-                setInput('');
+                setInput(''); if (inputRef.current) { inputRef.current.style.height = 'auto'; }
                 setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
                 setLoading(true);
 
@@ -1029,12 +1037,17 @@ Student context: stress=${userContext.stressLevel}, preference=${userContext.mea
                     </div>{/* end messages-area-wrapper */}
 
                     {/* Input — sits naturally at bottom of flex column, rises with keyboard */}
-                    <div ref={inputBarRef} className="input-bar" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <input
+                    <div ref={inputBarRef} className="input-bar" style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+                        <textarea
                             ref={inputRef}
-                            type="text"
                             value={input}
-                            onChange={(e) => setInput(e.target.value)}
+                            rows={1}
+                            onChange={(e) => {
+                                setInput(e.target.value);
+                                // Auto-resize: reset height then grow to scrollHeight
+                                e.target.style.height = 'auto';
+                                e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px';
+                            }}
                             onKeyDown={handleKeyDown}
                             placeholder="What are you craving?"
                             className="input-field"
