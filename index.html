@@ -778,23 +778,34 @@
                 const el = messagesAreaRef.current;
                 if (!el) return;
                 const THRESHOLD = 72; // px of pull needed to trigger refresh
+                const SCROLL_TOLERANCE = 2; // px — must be THIS close to top to even begin PTR
 
                 const onTouchStart = (e) => {
-                    // Only activate when already scrolled to the very top
-                    if (el.scrollTop > 0) return;
+                    // Must be genuinely at the top (not just briefly touching 0 mid-momentum).
+                    // SCROLL_TOLERANCE allows for 1-2px rounding without false triggers.
+                    if (el.scrollTop > SCROLL_TOLERANCE) {
+                        ptrState.current = { startY: 0, dragging: false, phase: 'idle' };
+                        return;
+                    }
                     ptrState.current = { startY: e.touches[0].clientY, dragging: true, phase: 'idle' };
                 };
 
                 const onTouchMove = (e) => {
                     if (!ptrState.current.dragging) return;
-                    const dy = e.touches[0].clientY - ptrState.current.startY;
-                    if (dy <= 0) {
-                        // Scrolling up — cancel PTR
+                    // If user scrolled away from top during the gesture, cancel immediately
+                    if (el.scrollTop > SCROLL_TOLERANCE) {
                         ptrState.current.dragging = false;
                         setPtrPhase('idle');
                         return;
                     }
-                    // Pulling down while at top — show indicator
+                    const dy = e.touches[0].clientY - ptrState.current.startY;
+                    if (dy <= 0) {
+                        // Moving upward — not a pull-down, cancel
+                        ptrState.current.dragging = false;
+                        setPtrPhase('idle');
+                        return;
+                    }
+                    // Confirmed intentional downward pull at the top
                     e.preventDefault();
                     const phase = dy >= THRESHOLD ? 'releasing' : 'pulling';
                     ptrState.current.phase = phase;
