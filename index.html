@@ -141,7 +141,7 @@
             color: var(--accent1);
             white-space: nowrap;
             pointer-events: none;
-            z-index: 200;
+            z-index: 10;
             transition: transform 0.2s ease, opacity 0.2s ease;
         }
 
@@ -198,8 +198,9 @@
             -webkit-backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--border);
             padding: 12px 16px;
-            /* Never shrink — header stays full size */
             flex-shrink: 0;
+            position: relative;
+            z-index: 50;
         }
 
         .send-btn {
