@@ -365,7 +365,7 @@
             -webkit-overflow-scrolling: touch;
             /* NOT overscroll-behavior:contain — that suppresses touch scroll when keyboard is up on iOS */
             overscroll-behavior-y: none;
-            padding: 16px 14px 16px;
+            padding: 16px 14px 80px; /* bottom padding clears the input bar height so all messages are reachable */
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
@@ -1017,7 +1017,7 @@ Student context: stress=${userContext.stressLevel}, preference=${userContext.mea
                         </div>
                         <div ref={messagesAreaRef} className="messages-area">
                         {/* Pushes messages to bottom when chat is short, collapses when full */}
-                        <div style={{ flex: 1 }} />
+                        <div style={{ flex: 1, minHeight: 0 }} />
                         {messages.map((msg, idx) => (
                             <div key={idx} className="msg-enter" style={{
                                 display: 'flex',
