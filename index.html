@@ -353,24 +353,21 @@
             flex: 1;
             min-height: 0;
             position: relative;
-            overflow: hidden;
+            /* overflow visible so PTR indicator can peek above, clipping handled by messages-area */
+            overflow: visible;
         }
 
         .messages-area {
             width: 100%;
             height: 100%;
-            overflow-y: auto;
+            overflow-y: scroll; /* scroll not auto — auto can freeze on iOS when keyboard opens */
             -webkit-overflow-scrolling: touch;
-            overscroll-behavior: contain;
-            padding: 8px 14px 16px;
+            /* NOT overscroll-behavior:contain — that suppresses touch scroll when keyboard is up on iOS */
+            overscroll-behavior-y: none;
+            padding: 16px 14px 16px;
             display: flex;
-            /* column-reverse does two things at once:
-               1. Messages naturally anchor to the bottom (newest at bottom, oldest scroll up)
-               2. scrollTop=0 means you are at the NEWEST message (bottom).
-                  Scrolling toward older messages INCREASES scrollTop.
-               This means PTR at scrollTop=0 fires when at newest messages — wrong.
-               So we flip PTR to trigger at the scroll TOP (max scrollTop) instead. */
-            flex-direction: column-reverse;
+            flex-direction: column;
+            justify-content: flex-start;
             gap: 10px;
         }
 
@@ -780,16 +777,9 @@
                 const THRESHOLD = 72; // px of pull needed to trigger refresh
                 const SCROLL_TOLERANCE = 2; // px rounding buffer
 
-                // With column-reverse, scrollTop=0 is the BOTTOM (newest messages).
-                // The visual TOP (oldest messages) is at maximum scrollTop.
-                // PTR fires when you are at the oldest message and pull down.
-                const atOldestMessage = () => {
-                    const maxScroll = el.scrollHeight - el.clientHeight;
-                    return maxScroll - el.scrollTop <= SCROLL_TOLERANCE;
-                };
-
                 const onTouchStart = (e) => {
-                    if (!atOldestMessage()) {
+                    // Only arm PTR when scrolled to the very top of the conversation
+                    if (el.scrollTop > SCROLL_TOLERANCE) {
                         ptrState.current = { startY: 0, dragging: false, phase: 'idle' };
                         return;
                     }
@@ -798,7 +788,7 @@
 
                 const onTouchMove = (e) => {
                     if (!ptrState.current.dragging) return;
-                    if (!atOldestMessage()) {
+                    if (el.scrollTop > SCROLL_TOLERANCE) {
                         ptrState.current.dragging = false;
                         setPtrPhase('idle');
                         return;
@@ -840,11 +830,10 @@
                 };
             }, []);
 
-            // Scroll to bottom — with column-reverse, newest messages are at scrollTop=0
-            const scrollToBottom = (behavior = 'smooth') => {
+            const scrollToBottom = () => {
                 const el = messagesAreaRef.current;
                 if (!el) return;
-                el.scrollTop = 0;
+                el.scrollTop = el.scrollHeight;
             };
 
             // Scroll to bottom when messages change or typing indicator appears
@@ -1026,7 +1015,9 @@ Student context: stress=${userContext.stressLevel}, preference=${userContext.mea
                              : 'Pull to refresh'}
                         </div>
                         <div ref={messagesAreaRef} className="messages-area">
-                        {[...messages].reverse().map((msg, idx) => (
+                        {/* Pushes messages to bottom when chat is short, collapses when full */}
+                        <div style={{ flex: 1 }} />
+                        {messages.map((msg, idx) => (
                             <div key={idx} className="msg-enter" style={{
                                 display: 'flex',
                                 justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
