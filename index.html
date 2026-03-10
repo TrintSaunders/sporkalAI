@@ -365,7 +365,7 @@
             -webkit-overflow-scrolling: touch;
             /* NOT overscroll-behavior:contain — that suppresses touch scroll when keyboard is up on iOS */
             overscroll-behavior-y: none;
-            padding: 16px 14px 16px;
+            padding: 16px 14px 80px; /* bottom padding clears the input bar height so all messages are reachable */
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
@@ -891,7 +891,15 @@
                 };
             };
 
-            const buildSystemPrompt = (userContext) => `You are Sporkal AI, a warm and witty food assistant for HPU (High Point University) students. Your job is to help them find the best campus meal for their mood, energy, and situation.
+            // Shuffle without mutating — called each prompt build so menu order is random every time
+            const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+
+            const buildSystemPrompt = (userContext) => {
+                const shuffledHealthy = shuffle(HPU_MENU.healthy);
+                const shuffledComfort = shuffle(HPU_MENU.comfort);
+                const randomLocation = HPU_MENU.locations[Math.floor(Math.random() * HPU_MENU.locations.length)];
+
+                return `You are Sporkal AI, a warm and witty food assistant for HPU (High Point University) students. Your job is to help them find the best campus meal for their mood, energy, and situation.
 
 PERSONALITY: Friendly, concise, encouraging. You genuinely care about students' wellbeing.
 
@@ -899,9 +907,14 @@ INTERACTION RULES:
 1. Ask ONE brief clarifying question if you need it (location, mood, dietary needs). Don't ask many at once.
 2. Once you understand, give ONE specific, confident recommendation.
 3. If they reject it, ask what didn't land, then pivot to something completely different.
-4. Keep responses to 2–4 sentences max. Be direct.
+4. Keep responses to 2-4 sentences max. Be direct.
 
-Do NOT default to the first items on any list. Consider the full range of options and pick what genuinely fits the student's situation best.
+VARIETY RULES — THIS IS CRITICAL:
+- You have 15 dining locations across campus. You MUST spread recommendations across all of them.
+- These items are popular but overused — only suggest them if they are a genuinely perfect fit, and even then explore other options first: "Point Mac and Cheese", "Nashville Hot Chicken Sandwich", "Blazing Buffalo Mac and Cheese".
+- Actively prioritize these underused locations: Village Juice, Butterfly, Farmers Market, Sunshine Cafe, Jamba Juice, Barberitos, Silver Line Diner, Purple Pie, Subway, Slane Starbucks.
+- Today's spotlight location (give it strong consideration): ${randomLocation.name} in ${randomLocation.building}, open ${randomLocation.hours}.
+- The menu below is in RANDOM ORDER every request. Read the entire list before choosing — do not default to whatever sounds familiar.
 
 RECOMMENDATION FORMAT:
 "You'd love the [ITEM] at [LOCATION] in [BUILDING]. [One sentence why it fits their vibe.] They're open until [TIME]."
@@ -911,11 +924,11 @@ REJECTION PIVOT:
 
 AVAILABLE CAMPUS MENU:
 
-HEALTHY OPTIONS:
-${HPU_MENU.healthy.join('\n')}
+HEALTHY OPTIONS (randomized — read all before picking):
+${shuffledHealthy.join('\n')}
 
-COMFORT FOODS:
-${HPU_MENU.comfort.join('\n')}
+COMFORT FOODS (randomized — read all before picking):
+${shuffledComfort.join('\n')}
 
 LOCATIONS & HOURS:
 ${HPU_MENU.locations.map(l => `${l.name} (${l.building}): ${l.hours}`).join('\n')}
@@ -924,10 +937,11 @@ RULES:
 - Only recommend items from the lists above.
 - Always include building name.
 - ONE recommendation at a time.
-- If stressed: lean comfort but optionally mention a balance option.
+- If stressed: lean comfort but mention a lighter option too.
 - Match energy: quick suggestions for time-crunched students.
 
 Student context: stress=${userContext.stressLevel}, preference=${userContext.mealPreference}, area=${userContext.location}`;
+            };
 
             const handleSend = async () => {
                 if (!input.trim() || loading) return;
@@ -1017,7 +1031,7 @@ Student context: stress=${userContext.stressLevel}, preference=${userContext.mea
                         </div>
                         <div ref={messagesAreaRef} className="messages-area">
                         {/* Pushes messages to bottom when chat is short, collapses when full */}
-                        <div style={{ flex: 1 }} />
+                        <div style={{ flex: 1, minHeight: 0 }} />
                         {messages.map((msg, idx) => (
                             <div key={idx} className="msg-enter" style={{
                                 display: 'flex',
