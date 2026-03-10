@@ -712,6 +712,21 @@
             ]
         };
 
+        // Strips markdown bold (**text**) and renders it as actual <strong> tags
+        // Also handles *italic* just in case the AI uses that too
+        const renderText = (text) => {
+            const parts = text.split(/(\*\*.*?\*\*|\*.*?\*)/g);
+            return parts.map((part, i) => {
+                if (part.startsWith('**') && part.endsWith('**')) {
+                    return <strong key={i}>{part.slice(2, -2)}</strong>;
+                }
+                if (part.startsWith('*') && part.endsWith('*')) {
+                    return <em key={i}>{part.slice(1, -1)}</em>;
+                }
+                return part;
+            });
+        };
+
         const SendIcon = () => (
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="22" y1="2" x2="11" y2="13"/>
@@ -940,7 +955,9 @@ RULES:
 - If stressed: lean comfort but mention a lighter option too.
 - Match energy: quick suggestions for time-crunched students.
 
-Student context: stress=${userContext.stressLevel}, preference=${userContext.mealPreference}, area=${userContext.location}`;
+Student context: stress=${userContext.stressLevel}, preference=${userContext.mealPreference}, area=${userContext.location}
+
+FORMATTING: Plain text only. No markdown, no **bold**, no *italics*, no bullet points, no dashes. Just natural sentences.`;
             };
 
             const handleSend = async () => {
@@ -1040,7 +1057,7 @@ Student context: stress=${userContext.stressLevel}, preference=${userContext.mea
                             }}>
                                 {msg.role === 'user'
                                     ? <div className="user-bubble">{msg.content}</div>
-                                    : <div className="ai-bubble">{msg.content}</div>
+                                    : <div className="ai-bubble">{renderText(msg.content)}</div>
                                 }
                             </div>
                         ))}
